@@ -1,17 +1,16 @@
 # Personal Task Manager
 
-A simple, offline-first personal task manager built with Next.js 14, Tailwind CSS, and Zustand.
+A simple, offline-first task manager built with Next.js 14, Tailwind CSS, and Zustand.
 
 ## Features
 
 - ✅ Create, edit, and delete tasks
-- ✅ Mark tasks as complete/incomplete
-- ✅ Set priority levels (low, medium, high)
-- ✅ Filter tasks by status and priority
-- ✅ Search tasks by title
-- ✅ Quick add tasks inline
-- ✅ Offline-first with localStorage persistence
-- ✅ Responsive design
+- 🎯 Set priority levels (low, medium, high)
+- 🔍 Search tasks by title
+- 📋 Filter by status (all, pending, completed)
+- 💾 Automatic localStorage persistence
+- 📱 Responsive design
+- ⚡ Fast and lightweight
 
 ## Getting Started
 
@@ -30,7 +29,7 @@ cd personal-task-manager
 # Install dependencies
 npm install
 
-# Start the development server
+# Start development server
 npm run dev
 ```
 
@@ -42,23 +41,48 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 npm run build
 ```
 
-The static export will be generated in the `out` directory.
+The static files will be generated in the `out` directory.
 
-## Deployment
+### Deploy to Vercel
 
-This project is configured for static export and can be deployed to:
-
-- **Vercel** (recommended): Just connect your repository
-- **Netlify**: Deploy the `out` folder
-- **GitHub Pages**: Deploy the `out` folder
+```bash
+npm i -g vercel
+vercel
+```
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 14 (Static Export)
 - **Styling**: Tailwind CSS
 - **State Management**: Zustand
 - **Storage**: localStorage
-- **ID Generation**: nanoid
+- **Language**: TypeScript
+
+## Project Structure
+
+```
+├── app/
+│   ├── layout.tsx      # Root layout
+│   ├── page.tsx        # Home page
+│   └── globals.css     # Global styles
+├── components/
+│   ├── TaskList.tsx    # Task list container
+│   ├── TaskCard.tsx    # Individual task card
+│   ├── TaskForm.tsx    # Create/edit form modal
+│   ├── FilterBar.tsx   # Status/priority filters
+│   ├── SearchInput.tsx # Search input
+│   ├── QuickAddTask.tsx# Quick add inline input
+│   └── EmptyState.tsx  # Empty state display
+├── hooks/
+│   ├── useTaskStore.ts # Zustand store
+│   ├── useLocalStorage.ts # localStorage hook
+│   └── useTaskFilters.ts  # Filter logic hook
+├── lib/
+│   ├── storage.ts      # localStorage wrapper
+│   └── taskUtils.ts    # Task utilities
+└── types/
+    └── index.ts        # TypeScript types
+```
 
 ## License
 
