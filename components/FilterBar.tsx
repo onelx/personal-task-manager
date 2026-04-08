@@ -1,61 +1,72 @@
 'use client';
 
-import { Priority } from '@/types/task';
-import { FilterState } from '@/hooks/useTaskFilters';
+import { useTaskStore } from '@/hooks/useTaskStore';
+import { StatusFilter, Priority } from '@/types';
 import clsx from 'clsx';
 
-interface FilterBarProps {
-  filters: FilterState;
-  onChange: (filters: Partial<FilterState>) => void;
-}
+const statusOptions: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'completed', label: 'Completed' },
+];
 
-// Filter bar for status and priority filtering
-export function FilterBar({ filters, onChange }: FilterBarProps) {
-  const statusOptions: { value: FilterState['status']; label: string }[] = [
-    { value: 'all', label: 'All' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'completed', label: 'Completed' },
-  ];
-  
-  const priorityOptions: { value: 'all' | Priority; label: string }[] = [
-    { value: 'all', label: 'All Priorities' },
-    { value: 'high', label: 'High' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'low', label: 'Low' },
-  ];
-  
+const priorityOptions: { value: Priority | 'all'; label: string }[] = [
+  { value: 'all', label: 'Any Priority' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+];
+
+export default function FilterBar() {
+  const filters = useTaskStore(state => state.filters);
+  const setStatusFilter = useTaskStore(state => state.setStatusFilter);
+  const setPriorityFilter = useTaskStore(state => state.setPriorityFilter);
+
   return (
-    <div className="flex flex-col sm:flex-row gap-3">
-      {/* Status filter */}
-      <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-        {statusOptions.map((option) => (
+    <div className="flex flex-wrap gap-4 items-center">
+      {/* Status filter tabs */}
+      <div className="flex bg-gray-100 rounded-lg p-1">
+        {statusOptions.map(option => (
           <button
             key={option.value}
-            onClick={() => onChange({ status: option.value })}
+            onClick={() => setStatusFilter(option.value)}
             className={clsx(
-              'px-4 py-2 text-sm font-medium transition-colors',
+              'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
               filters.status === option.value
-                ? 'bg-primary-600 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-50'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
             )}
           >
             {option.label}
           </button>
         ))}
       </div>
-      
-      {/* Priority filter */}
-      <select
-        value={filters.priority}
-        onChange={(e) => onChange({ priority: e.target.value as 'all' | Priority })}
-        className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-      >
-        {priorityOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+
+      {/* Priority filter dropdown */}
+      <div className="relative">
+        <select
+          value={filters.priority}
+          onChange={(e) => setPriorityFilter(e.target.value as Priority | 'all')}
+          className={clsx(
+            'appearance-none bg-white border rounded-lg px-3 py-2 pr-8 text-sm font-medium cursor-pointer focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none',
+            filters.priority !== 'all' 
+              ? 'border-primary-300 text-primary-700' 
+              : 'border-gray-300 text-gray-700'
+          )}
+        >
+          {priorityOptions.map(option => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {/* Dropdown arrow */}
+        <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+          <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
     </div>
   );
 }
