@@ -1,125 +1,121 @@
 'use client';
 
 import { useState } from 'react';
-import { TaskList } from '@/components/TaskList';
-import { FilterBar } from '@/components/FilterBar';
-import { SearchInput } from '@/components/SearchInput';
-import { QuickAddTask } from '@/components/QuickAddTask';
-import { TaskForm } from '@/components/TaskForm';
-import { useTaskStore } from '@/hooks/useTaskStore';
-import { useTaskFilters, FilterState } from '@/hooks/useTaskFilters';
-import { Task } from '@/types/task';
+import { Task } from '@/types';
+import { useTaskFilters } from '@/hooks/useTaskFilters';
+import QuickAddTask from '@/components/QuickAddTask';
+import SearchInput from '@/components/SearchInput';
+import FilterBar from '@/components/FilterBar';
+import TaskList from '@/components/TaskList';
+import TaskForm from '@/components/TaskForm';
 
-// Main page component - Dashboard with task list and actions
 export default function Home() {
-  const { tasks, addTask, updateTask, deleteTask, toggleComplete } = useTaskStore();
-  
-  // Filter state
-  const [filters, setFilters] = useState<FilterState>({
-    status: 'all',
-    priority: 'all',
-    search: '',
-  });
-  
-  // Modal state for editing tasks
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  // Modal state
   const [isFormOpen, setIsFormOpen] = useState(false);
-  
-  // Get filtered tasks
-  const filteredTasks = useTaskFilters(tasks, filters);
-  
-  // Stats for header
-  const completedCount = tasks.filter(t => t.completed).length;
-  const pendingCount = tasks.filter(t => !t.completed).length;
-  
-  // Handle filter changes
-  const handleFilterChange = (newFilters: Partial<FilterState>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  // Get task statistics
+  const { stats } = useTaskFilters();
+
+  // Open form for new task
+  const handleNewTask = () => {
+    setEditingTask(null);
+    setIsFormOpen(true);
   };
-  
-  // Handle task edit
-  const handleEdit = (task: Task) => {
+
+  // Open form for editing
+  const handleEditTask = (task: Task) => {
     setEditingTask(task);
     setIsFormOpen(true);
   };
-  
-  // Handle form submit
-  const handleFormSubmit = (data: Omit<Task, 'id' | 'createdAt' | 'completedAt'>) => {
-    if (editingTask) {
-      updateTask(editingTask.id, data);
-    } else {
-      addTask(data);
-    }
+
+  // Close form
+  const handleCloseForm = () => {
     setIsFormOpen(false);
     setEditingTask(null);
   };
-  
-  // Handle form close
-  const handleFormClose = () => {
-    setIsFormOpen(false);
-    setEditingTask(null);
-  };
-  
+
   return (
-    <div className="space-y-6">
-      {/* Stats bar */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex gap-6">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-gray-900">{tasks.length}</p>
-              <p className="text-sm text-gray-500">Total Tasks</p>
+    <main className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">My Tasks</h1>
+              <p className="text-sm text-gray-500 mt-0.5">
+                {stats.pending > 0 ? (
+                  <>
+                    {stats.pending} pending
+                    {stats.highPriority > 0 && (
+                      <span className="text-red-600"> • {stats.highPriority} high priority</span>
+                    )}
+                  </>
+                ) : stats.total > 0 ? (
+                  'All tasks completed! 🎉'
+                ) : (
+                  'No tasks yet'
+                )}
+              </p>
             </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-green-600">{completedCount}</p>
-              <p className="text-sm text-gray-500">Completed</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
-              <p className="text-sm text-gray-500">Pending</p>
-            </div>
+            <button
+              onClick={handleNewTask}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-sm"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="hidden sm:inline">New Task</span>
+            </button>
           </div>
-          <button
-            onClick={() => setIsFormOpen(true)}
-            className="btn-primary"
-          >
-            <span className="mr-2">+</span>
-            New Task
-          </button>
         </div>
+      </header>
+
+      {/* Main content */}
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        {/* Quick add */}
+        <section className="mb-6">
+          <QuickAddTask />
+        </section>
+
+        {/* Stats cards */}
+        {stats.total > 0 && (
+          <section className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+              <div className="text-xs text-gray-500 mt-1">Total Tasks</div>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+              <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+              <div className="text-xs text-gray-500 mt-1">Completed</div>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+              <div className="text-2xl font-bold text-primary-600">{stats.completionRate}%</div>
+              <div className="text-xs text-gray-500 mt-1">Progress</div>
+            </div>
+          </section>
+        )}
+
+        {/* Filters and search */}
+        <section className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex-1">
+            <SearchInput />
+          </div>
+          <FilterBar />
+        </section>
+
+        {/* Task list */}
+        <section>
+          <TaskList onEditTask={handleEditTask} />
+        </section>
       </div>
-      
-      {/* Quick add task */}
-      <QuickAddTask onAdd={addTask} />
-      
-      {/* Search and filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-4">
-        <SearchInput
-          value={filters.search}
-          onChange={(search) => handleFilterChange({ search })}
-        />
-        <FilterBar
-          filters={filters}
-          onChange={handleFilterChange}
-        />
-      </div>
-      
-      {/* Task list */}
-      <TaskList
-        tasks={filteredTasks}
-        onToggleComplete={toggleComplete}
-        onEdit={handleEdit}
-        onDelete={deleteTask}
-      />
-      
+
       {/* Task form modal */}
-      {isFormOpen && (
-        <TaskForm
-          task={editingTask}
-          onSubmit={handleFormSubmit}
-          onClose={handleFormClose}
-        />
-      )}
-    </div>
+      <TaskForm
+        task={editingTask}
+        isOpen={isFormOpen}
+        onClose={handleCloseForm}
+      />
+    </main>
   );
 }
