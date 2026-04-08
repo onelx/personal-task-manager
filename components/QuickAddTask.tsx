@@ -1,68 +1,71 @@
 'use client';
 
-import { useState } from 'react';
-import { Priority } from '@/types/task';
+import { useState, useCallback, KeyboardEvent } from 'react';
+import { useTaskStore } from '@/hooks/useTaskStore';
 
-interface QuickAddTaskProps {
-  onAdd: (data: { title: string; priority?: Priority }) => void;
-}
-
-// Quick add input for adding tasks inline without opening modal
-export function QuickAddTask({ onAdd }: QuickAddTaskProps) {
+export default function QuickAddTask() {
   const [title, setTitle] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const [isLoading, setIsLoading] = useState(false);
+  const addTask = useTaskStore(state => state.addTask);
+
+  const handleSubmit = useCallback(async () => {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle || isLoading) return;
+
+    setIsLoading(true);
     
-    if (!title.trim()) return;
-    
-    onAdd({ title: title.trim() });
+    // Add task with default priority
+    addTask({
+      title: trimmedTitle,
+      description: '',
+      priority: 'medium',
+    });
+
     setTitle('');
+    setIsLoading(false);
+  }, [title, isLoading, addTask]);
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
   };
-  
+
   return (
-    <form onSubmit={handleSubmit} className="relative">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          {/* Plus icon */}
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg
-              className={`h-5 w-5 transition-colors ${isFocused ? 'text-primary-500' : 'text-gray-400'}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+    <div className="flex gap-2">
+      <div className="flex-1 relative">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Add a quick task... (press Enter)"
+          disabled={isLoading}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+        />
+        {/* Keyboard hint */}
+        {title.trim() && (
+          <div className="absolute inset-y-0 right-3 flex items-center">
+            <kbd className="hidden sm:inline-flex items-center px-2 py-1 text-xs font-medium text-gray-500 bg-gray-100 border border-gray-300 rounded">
+              Enter ↵
+            </kbd>
           </div>
-          
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            placeholder="Quick add a task... (press Enter)"
-            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-sm"
-          />
-        </div>
-        
-        <button
-          type="submit"
-          disabled={!title.trim()}
-          className="btn-primary px-6 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Add
-        </button>
+        )}
       </div>
       
-      {/* Helper text */}
-      {isFocused && (
-        <p className="text-xs text-gray-500 mt-2 ml-1">
-          Tip: Press Enter to add quickly. Click "New Task" button for more options.
-        </p>
-      )}
-    </form>
+      {/* Submit button (visible on mobile or as alternative) */}
+      <button
+        onClick={handleSubmit}
+        disabled={!title.trim() || isLoading}
+        className="px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        aria-label="Add task"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        <span className="hidden sm:inline">Add</span>
+      </button>
+    </div>
   );
 }
