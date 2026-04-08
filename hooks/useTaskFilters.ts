@@ -1,31 +1,35 @@
 import { useMemo } from 'react';
-import { Task, Priority } from '@/types/task';
-import { sortTasks, filterByStatus, filterByPriority, filterBySearch } from '@/lib/taskUtils';
+import { useTaskStore } from './useTaskStore';
+import { applyFilters, getTaskStats } from '@/lib/taskUtils';
 
-// Filter state type
-export interface FilterState {
-  status: 'all' | 'pending' | 'completed';
-  priority: 'all' | Priority;
-  search: string;
-}
+// Hook that computes filtered tasks based on current filter state
+export function useTaskFilters() {
+  const tasks = useTaskStore(state => state.tasks);
+  const filters = useTaskStore(state => state.filters);
 
-// Hook to compute filtered and sorted tasks
-export function useTaskFilters(tasks: Task[], filters: FilterState): Task[] {
-  return useMemo(() => {
-    let result = tasks;
-    
-    // Apply status filter
-    result = filterByStatus(result, filters.status);
-    
-    // Apply priority filter
-    result = filterByPriority(result, filters.priority);
-    
-    // Apply search filter
-    result = filterBySearch(result, filters.search);
-    
-    // Sort the results
-    result = sortTasks(result);
-    
-    return result;
-  }, [tasks, filters.status, filters.priority, filters.search]);
+  // Compute filtered tasks (memoized for performance)
+  const filteredTasks = useMemo(() => {
+    return applyFilters(tasks, filters);
+  }, [tasks, filters]);
+
+  // Compute task statistics
+  const stats = useMemo(() => {
+    return getTaskStats(tasks);
+  }, [tasks]);
+
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return (
+      filters.status !== 'all' ||
+      filters.priority !== 'all' ||
+      filters.searchQuery.trim() !== ''
+    );
+  }, [filters]);
+
+  return {
+    filteredTasks,
+    stats,
+    hasActiveFilters,
+    totalFiltered: filteredTasks.length,
+  };
 }
