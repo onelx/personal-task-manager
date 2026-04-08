@@ -1,62 +1,96 @@
-import { Task, Priority } from '@/types/task';
+import { Task, Priority, StatusFilter, FilterState } from '@/types';
 
-// Priority weight for sorting (higher = more important)
-const PRIORITY_WEIGHT: Record<Priority, number> = {
+// Priority order for sorting (higher number = higher priority)
+const priorityOrder: Record<Priority, number> = {
   high: 3,
   medium: 2,
   low: 1,
 };
 
-// Sort tasks by completion status, then priority, then creation date
-export function sortTasks(tasks: Task[]): Task[] {
+// Sort tasks by priority (high to low) then by creation date (newest first)
+export function sortTasksByPriority(tasks: Task[]): Task[] {
   return [...tasks].sort((a, b) => {
-    // Incomplete tasks first
+    // First sort by completion status (incomplete first)
     if (a.completed !== b.completed) {
       return a.completed ? 1 : -1;
     }
-    
-    // Then by priority (high to low)
-    const priorityDiff = PRIORITY_WEIGHT[b.priority] - PRIORITY_WEIGHT[a.priority];
+    // Then by priority
+    const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
     if (priorityDiff !== 0) return priorityDiff;
-    
-    // Then by creation date (newest first)
+    // Finally by creation date
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+// Sort tasks by creation date (newest first)
+export function sortTasksByDate(tasks: Task[]): Task[] {
+  return [...tasks].sort((a, b) => {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 }
 
 // Filter tasks by status
-export function filterByStatus(tasks: Task[], status: 'all' | 'pending' | 'completed'): Task[] {
-  if (status === 'all') return tasks;
-  if (status === 'pending') return tasks.filter(t => !t.completed);
-  if (status === 'completed') return tasks.filter(t => t.completed);
-  return tasks;
+export function filterByStatus(tasks: Task[], status: StatusFilter): Task[] {
+  switch (status) {
+    case 'pending':
+      return tasks.filter(task => !task.completed);
+    case 'completed':
+      return tasks.filter(task => task.completed);
+    default:
+      return tasks;
+  }
 }
 
 // Filter tasks by priority
-export function filterByPriority(tasks: Task[], priority: 'all' | Priority): Task[] {
+export function filterByPriority(tasks: Task[], priority: Priority | 'all'): Task[] {
   if (priority === 'all') return tasks;
-  return tasks.filter(t => t.priority === priority);
+  return tasks.filter(task => task.priority === priority);
 }
 
-// Filter tasks by search query
+// Filter tasks by search query (searches in title and description)
 export function filterBySearch(tasks: Task[], query: string): Task[] {
   if (!query.trim()) return tasks;
-  
-  const lowerQuery = query.toLowerCase();
-  return tasks.filter(t => 
-    t.title.toLowerCase().includes(lowerQuery) ||
-    (t.description && t.description.toLowerCase().includes(lowerQuery))
-  );
+  const lowerQuery = query.toLowerCase().trim();
+  return tasks.filter(task => {
+    const titleMatch = task.title.toLowerCase().includes(lowerQuery);
+    const descMatch = task.description?.toLowerCase().includes(lowerQuery) || false;
+    return titleMatch || descMatch;
+  });
 }
 
-// Get priority label with color class
-export function getPriorityLabel(priority: Priority): { label: string; colorClass: string } {
-  const labels: Record<Priority, { label: string; colorClass: string }> = {
-    high: { label: 'High', colorClass: 'bg-red-100 text-red-800' },
-    medium: { label: 'Medium', colorClass: 'bg-amber-100 text-amber-800' },
-    low: { label: 'Low', colorClass: 'bg-green-100 text-green-800' },
+// Apply all filters to tasks
+export function applyFilters(tasks: Task[], filters: FilterState): Task[] {
+  let filtered = tasks;
+  filtered = filterByStatus(filtered, filters.status);
+  filtered = filterByPriority(filtered, filters.priority);
+  filtered = filterBySearch(filtered, filters.searchQuery);
+  return sortTasksByPriority(filtered);
+}
+
+// Get task statistics
+export function getTaskStats(tasks: Task[]) {
+  const total = tasks.length;
+  const completed = tasks.filter(t => t.completed).length;
+  const pending = total - completed;
+  const highPriority = tasks.filter(t => t.priority === 'high' && !t.completed).length;
+  
+  return {
+    total,
+    completed,
+    pending,
+    highPriority,
+    completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
   };
-  return labels[priority];
+}
+
+// Get priority display info
+export function getPriorityInfo(priority: Priority) {
+  const info = {
+    high: { label: 'High', color: 'text-red-600', bg: 'bg-red-100', border: 'border-red-300' },
+    medium: { label: 'Medium', color: 'text-yellow-600', bg: 'bg-yellow-100', border: 'border-yellow-300' },
+    low: { label: 'Low', color: 'text-green-600', bg: 'bg-green-100', border: 'border-green-300' },
+  };
+  return info[priority];
 }
 
 // Format date for display
@@ -66,13 +100,13 @@ export function formatDate(isoString: string): string {
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-  });
+  if (diffDays === 0) {
+    return 'Today';
+  } else if (diffDays === 1) {
+    return 'Yesterday';
+  } else if (diffDays < 7) {
+    return `${diffDays} days ago`;
+  } else {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
 }
