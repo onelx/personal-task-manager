@@ -1,12 +1,12 @@
-// localStorage wrapper with error handling and JSON serialization
+// localStorage wrapper with JSON serialization and error handling
 
 const TASKS_KEY = 'ptm-tasks';
 const SETTINGS_KEY = 'ptm-settings';
 
-// Check if we're in the browser
+// Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
 
-// Generic get function with error handling
+// Generic get function with type safety
 export function getFromStorage<T>(key: string, defaultValue: T): T {
   if (!isBrowser) return defaultValue;
   
@@ -20,7 +20,7 @@ export function getFromStorage<T>(key: string, defaultValue: T): T {
   }
 }
 
-// Generic set function with error handling
+// Generic set function
 export function setToStorage<T>(key: string, value: T): boolean {
   if (!isBrowser) return false;
   
@@ -46,19 +46,18 @@ export function removeFromStorage(key: string): boolean {
   }
 }
 
-// Task-specific helpers
+// Specific helpers for tasks
 export const tasksStorage = {
-  get: () => getFromStorage<any[]>(TASKS_KEY, []),
-  set: (tasks: any[]) => setToStorage(TASKS_KEY, tasks),
+  key: TASKS_KEY,
+  get: <T>(defaultValue: T) => getFromStorage<T>(TASKS_KEY, defaultValue),
+  set: <T>(value: T) => setToStorage(TASKS_KEY, value),
   clear: () => removeFromStorage(TASKS_KEY),
 };
 
-// Settings-specific helpers
+// Specific helpers for settings
 export const settingsStorage = {
-  get: () => getFromStorage(SETTINGS_KEY, {
-    theme: 'system',
-    defaultPriority: 'medium',
-    showCompleted: true,
-  }),
-  set: (settings: any) => setToStorage(SETTINGS_KEY, settings),
+  key: SETTINGS_KEY,
+  get: <T>(defaultValue: T) => getFromStorage<T>(SETTINGS_KEY, defaultValue),
+  set: <T>(value: T) => setToStorage(SETTINGS_KEY, value),
+  clear: () => removeFromStorage(SETTINGS_KEY),
 };
