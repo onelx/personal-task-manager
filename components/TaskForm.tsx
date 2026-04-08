@@ -1,101 +1,130 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Task, Priority } from '@/types/task';
+import { useState, useEffect, FormEvent } from 'react';
+import { Task, Priority, TaskFormData } from '@/types';
+import { useTaskStore } from '@/hooks/useTaskStore';
 import clsx from 'clsx';
 
 interface TaskFormProps {
-  task?: Task | null;
-  onSubmit: (data: { title: string; description: string | null; priority: Priority; completed: boolean }) => void;
+  task?: Task | null; // If provided, we're editing
+  isOpen: boolean;
   onClose: () => void;
 }
 
-// Modal form for creating/editing tasks with validation
-export function TaskForm({ task, onSubmit, onClose }: TaskFormProps) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<Priority>('medium');
+const priorityOptions: { value: Priority; label: string; color: string }[] = [
+  { value: 'low', label: 'Low', color: 'bg-green-100 text-green-700 border-green-300' },
+  { value: 'medium', label: 'Medium', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
+  { value: 'high', label: 'High', color: 'bg-red-100 text-red-700 border-red-300' },
+];
+
+export default function TaskForm({ task, isOpen, onClose }: TaskFormProps) {
+  const addTask = useTaskStore(state => state.addTask);
+  const updateTask = useTaskStore(state => state.updateTask);
+
+  const [formData, setFormData] = useState<TaskFormData>({
+    title: '',
+    description: '',
+    priority: 'medium',
+  });
   const [errors, setErrors] = useState<{ title?: string }>({});
-  
+
   // Populate form when editing
   useEffect(() => {
     if (task) {
-      setTitle(task.title);
-      setDescription(task.description || '');
-      setPriority(task.priority);
+      setFormData({
+        title: task.title,
+        description: task.description || '',
+        priority: task.priority,
+      });
+    } else {
+      setFormData({
+        title: '',
+        description: '',
+        priority: 'medium',
+      });
     }
-  }, [task]);
-  
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate
+    setErrors({});
+  }, [task, isOpen]);
+
+  const validate = (): boolean => {
     const newErrors: { title?: string } = {};
-    if (!title.trim()) {
+    if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
+    } else if (formData.title.trim().length > 200) {
+      newErrors.title = 'Title must be less than 200 characters';
     }
-    
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-    
-    onSubmit({
-      title: title.trim(),
-      description: description.trim() || null,
-      priority,
-      completed: task?.completed || false,
-    });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
-  
-  // Handle escape key
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
-  
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    if (task) {
+      updateTask(task.id, formData);
+    } else {
+      addTask(formData);
+    }
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="fixed inset-0 bg-black/50 transition-opacity"
         onClick={onClose}
       />
-      
+
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            {task ? 'Edit Task' : 'New Task'}
-          </h2>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <div
+          className="relative w-full max-w-md bg-white rounded-xl shadow-xl transform transition-all"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {task ? 'Edit Task' : 'New Task'}
+            </h2>
+            <button
+              onClick={onClose}
+              className="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-4 space-y-4">
             {/* Title */}
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                Title *
+                Title <span className="text-red-500">*</span>
               </label>
               <input
-                id="title"
                 type="text"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  if (errors.title) setErrors({});
-                }}
-                className={clsx('input', errors.title && 'border-red-500 focus:ring-red-500')}
+                id="title"
+                value={formData.title}
+                onChange={e => setFormData({ ...formData, title: e.target.value })}
                 placeholder="What needs to be done?"
+                className={clsx(
+                  'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-shadow',
+                  errors.title ? 'border-red-300' : 'border-gray-300'
+                )}
                 autoFocus
               />
               {errors.title && (
-                <p className="text-sm text-red-600 mt-1">{errors.title}</p>
+                <p className="mt-1 text-sm text-red-600">{errors.title}</p>
               )}
             </div>
-            
+
             {/* Description */}
             <div>
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
@@ -103,48 +132,51 @@ export function TaskForm({ task, onSubmit, onClose }: TaskFormProps) {
               </label>
               <textarea
                 id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="input min-h-[80px] resize-none"
+                value={formData.description}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Add more details (optional)"
                 rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-shadow resize-none"
               />
             </div>
-            
+
             {/* Priority */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Priority
               </label>
               <div className="flex gap-2">
-                {(['low', 'medium', 'high'] as Priority[]).map((p) => (
+                {priorityOptions.map(option => (
                   <button
-                    key={p}
+                    key={option.value}
                     type="button"
-                    onClick={() => setPriority(p)}
+                    onClick={() => setFormData({ ...formData, priority: option.value })}
                     className={clsx(
-                      'flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors border',
-                      priority === p
-                        ? p === 'high'
-                          ? 'bg-red-100 border-red-300 text-red-800'
-                          : p === 'medium'
-                          ? 'bg-amber-100 border-amber-300 text-amber-800'
-                          : 'bg-green-100 border-green-300 text-green-800'
-                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                      'flex-1 px-3 py-2 text-sm font-medium rounded-lg border-2 transition-all',
+                      formData.priority === option.value
+                        ? option.color
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
                     )}
                   >
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                    {option.label}
                   </button>
                 ))}
               </div>
             </div>
-            
+
             {/* Actions */}
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={onClose} className="btn-secondary flex-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
                 Cancel
               </button>
-              <button type="submit" className="btn-primary flex-1">
+              <button
+                type="submit"
+                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+              >
                 {task ? 'Save Changes' : 'Create Task'}
               </button>
             </div>
